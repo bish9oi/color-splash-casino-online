@@ -14,8 +14,12 @@ import {
   Zap
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { WalletComponent } from '@/components/WalletComponent';
+import { supabase } from '@/lib/supabase';
+import { useToast } from '@/hooks/use-toast';
 
 interface User {
+  id: string;
   email: string;
   username: string;
 }
@@ -39,8 +43,8 @@ const COLORS = [
 ];
 
 export function ColorTradingGame({ user, onLogout }: ColorTradingGameProps) {
-  const [balance, setBalance] = useState(1000);
-  const [betAmount, setBetAmount] = useState(100);
+  const [walletBalance, setWalletBalance] = useState(0);
+  const [betAmount, setBetAmount] = useState(10);
   const [selectedColor, setSelectedColor] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [gameResult, setGameResult] = useState<GameResult | null>(null);
@@ -49,6 +53,7 @@ export function ColorTradingGame({ user, onLogout }: ColorTradingGameProps) {
   const [winStreak, setWinStreak] = useState(0);
   const [totalGames, setTotalGames] = useState(0);
   const [totalWins, setTotalWins] = useState(0);
+  const { toast } = useToast();
 
   const winRate = totalGames > 0 ? Math.round((totalWins / totalGames) * 100) : 0;
 
@@ -64,45 +69,131 @@ export function ColorTradingGame({ user, onLogout }: ColorTradingGameProps) {
     return () => clearInterval(interval);
   }, [countdown, isPlaying]);
 
-  const placeBet = (color: string) => {
-    if (balance < betAmount || isPlaying) return;
-    
-    setSelectedColor(color);
-    setBalance(prev => prev - betAmount);
-    setIsPlaying(true);
-    setCountdown(3);
-    setGameResult(null);
+  const placeBet = async (color: string) => {
+    if (walletBalance < betAmount || isPlaying) {
+      if (walletBalance < betAmount) {
+        toast({
+          title: "Insufficient Balance",
+          description: "Please add funds to your wallet to place this bet. Minimum bet: 10 USDT",
+          variant: "destructive",
+        });
+      }
+      return;
+    }
+
+    if (betAmount < 10) {
+      toast({
+        title: "Minimum Bet Required",
+        description: "Minimum bet amount is 10 USDT",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      // Record the bet transaction
+      const { error } = await supabase.from('transactions').insert({
+        type: 'bet',
+        amount: betAmount,
+        description: `Bet ${betAmount} USDT on ${color}`,
+        status: 'completed'
+      });
+
+      if (error) throw error;
+
+      // Update wallet balance
+      const { error: walletError } = await supabase
+        .from('wallets')
+        .update({ 
+          balance: walletBalance - betAmount,
+          updated_at: new Date().toISOString()
+        })
+        .eq('user_id', user.id);
+
+      if (walletError) throw walletError;
+
+      setSelectedColor(color);
+      setWalletBalance(prev => prev - betAmount);
+      setIsPlaying(true);
+      setCountdown(3);
+      setGameResult(null);
+    } catch (error) {
+      console.error('Error placing bet:', error);
+      toast({
+        title: "Bet Failed",
+        description: "Failed to place bet. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
-  const revealResult = () => {
+  const revealResult = async () => {
     const winningColor = COLORS[Math.floor(Math.random() * COLORS.length)].name;
     const isWin = selectedColor === winningColor;
     const winAmount = isWin ? betAmount * 2 : 0;
     
-    const result: GameResult = {
-      userChoice: selectedColor!,
-      winningColor,
-      isWin,
-      timestamp: new Date()
-    };
+    try {
+      if (isWin) {
+        // Record win transaction
+        const { error: winError } = await supabase.from('transactions').insert({
+          type: 'win',
+          amount: winAmount,
+          description: `Won ${winAmount} USDT on ${selectedColor}`,
+          status: 'completed'
+        });
 
-    setGameResult(result);
-    setGameHistory(prev => [result, ...prev.slice(0, 9)]);
-    setTotalGames(prev => prev + 1);
-    
-    if (isWin) {
-      setBalance(prev => prev + winAmount);
-      setTotalWins(prev => prev + 1);
-      setWinStreak(prev => prev + 1);
-    } else {
-      setWinStreak(0);
+        if (winError) throw winError;
+
+        // Update wallet balance
+        const { error: walletError } = await supabase
+          .from('wallets')
+          .update({ 
+            balance: walletBalance + winAmount,
+            updated_at: new Date().toISOString()
+          })
+          .eq('user_id', user.id);
+
+        if (walletError) throw walletError;
+
+        setWalletBalance(prev => prev + winAmount);
+        setTotalWins(prev => prev + 1);
+        setWinStreak(prev => prev + 1);
+        toast({
+          title: "🎉 You Won!",
+          description: `Congratulations! You won ${winAmount} USDT!`,
+        });
+      } else {
+        setWinStreak(0);
+        toast({
+          title: "Better luck next time!",
+          description: `The winning color was ${COLORS.find(c => c.name === winningColor)?.label}`,
+          variant: "destructive",
+        });
+      }
+
+      const result: GameResult = {
+        userChoice: selectedColor!,
+        winningColor,
+        isWin,
+        timestamp: new Date()
+      };
+
+      setGameResult(result);
+      setGameHistory(prev => [result, ...prev.slice(0, 9)]);
+      setTotalGames(prev => prev + 1);
+      setIsPlaying(false);
+      setSelectedColor(null);
+    } catch (error) {
+      console.error('Error processing win:', error);
+      toast({
+        title: "Error",
+        description: "Failed to process game result",
+        variant: "destructive",
+      });
     }
-    
-    setIsPlaying(false);
-    setSelectedColor(null);
   };
 
-  const quickBetAmounts = [50, 100, 250, 500];
+  const quickBetAmounts = [10, 25, 50, 100];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-secondary/20 p-4">
@@ -127,7 +218,7 @@ export function ColorTradingGame({ user, onLogout }: ColorTradingGameProps) {
           <Card className="bg-card/50 backdrop-blur-sm">
             <CardContent className="p-4 text-center">
               <Coins className="h-6 w-6 mx-auto mb-2 text-primary" />
-              <div className="text-2xl font-bold text-foreground">${balance}</div>
+              <div className="text-2xl font-bold text-foreground">{walletBalance.toFixed(2)} USDT</div>
               <div className="text-sm text-muted-foreground">Balance</div>
             </CardContent>
           </Card>
@@ -170,10 +261,15 @@ export function ColorTradingGame({ user, onLogout }: ColorTradingGameProps) {
             <CardContent className="space-y-4">
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium">Bet Amount: ${betAmount}</span>
-                  <span className="text-sm text-muted-foreground">Max: ${balance}</span>
+                  <span className="text-sm font-medium">Bet Amount: {betAmount} USDT</span>
+                  <span className="text-sm text-muted-foreground">Max: {walletBalance.toFixed(2)} USDT</span>
                 </div>
-                <Progress value={(betAmount / balance) * 100} className="h-2" />
+                <Progress value={walletBalance > 0 ? (betAmount / walletBalance) * 100 : 0} className="h-2" />
+                {walletBalance < 10 && (
+                  <p className="text-sm text-red-500 mt-2">
+                    Insufficient balance. Please add funds to your wallet.
+                  </p>
+                )}
               </div>
               
               <div className="grid grid-cols-4 gap-2">
@@ -183,9 +279,9 @@ export function ColorTradingGame({ user, onLogout }: ColorTradingGameProps) {
                     variant={betAmount === amount ? "default" : "outline"}
                     size="sm"
                     onClick={() => setBetAmount(amount)}
-                    disabled={amount > balance || isPlaying}
+                    disabled={amount > walletBalance || isPlaying}
                   >
-                    ${amount}
+                    {amount} USDT
                   </Button>
                 ))}
               </div>
@@ -231,11 +327,11 @@ export function ColorTradingGame({ user, onLogout }: ColorTradingGameProps) {
                       gameResult && gameResult.winningColor !== color.name && gameResult.userChoice === color.name && "animate-lose-shake"
                     )}
                     onClick={() => placeBet(color.name)}
-                    disabled={balance < betAmount || isPlaying}
+                    disabled={walletBalance < betAmount || isPlaying}
                   >
                     {color.label}
                     <br />
-                    <span className="text-sm opacity-75">${betAmount} → ${betAmount * 2}</span>
+                    <span className="text-sm opacity-75">{betAmount} USDT → {betAmount * 2} USDT</span>
                   </Button>
                 ))}
               </div>
@@ -264,6 +360,11 @@ export function ColorTradingGame({ user, onLogout }: ColorTradingGameProps) {
 
         {/* Game History & Stats */}
         <div className="space-y-6">
+          {/* Wallet Component */}
+          <WalletComponent 
+            user={user} 
+            onBalanceUpdate={setWalletBalance}
+          />
           <Card className="bg-card/80 backdrop-blur-sm border-border">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
