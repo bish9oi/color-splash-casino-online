@@ -52,6 +52,11 @@ export default {
 					DEFAULT: 'hsl(var(--card))',
 					foreground: 'hsl(var(--card-foreground))'
 				},
+				game: {
+					red: 'hsl(var(--game-red))',
+					blue: 'hsl(var(--game-blue))',
+					yellow: 'hsl(var(--game-yellow))',
+				},
 				sidebar: {
 					DEFAULT: 'hsl(var(--sidebar-background))',
 					foreground: 'hsl(var(--sidebar-foreground))',
@@ -70,25 +75,46 @@ export default {
 			},
 			keyframes: {
 				'accordion-down': {
-					from: {
-						height: '0'
-					},
-					to: {
-						height: 'var(--radix-accordion-content-height)'
-					}
+					from: { height: '0' },
+					to: { height: 'var(--radix-accordion-content-height)' }
 				},
 				'accordion-up': {
-					from: {
-						height: 'var(--radix-accordion-content-height)'
-					},
-					to: {
-						height: '0'
-					}
+					from: { height: 'var(--radix-accordion-content-height)' },
+					to: { height: '0' }
+				},
+				'neon-pulse': {
+					'0%, 100%': { boxShadow: '0 0 20px hsl(var(--primary))' },
+					'50%': { boxShadow: '0 0 40px hsl(var(--primary)), 0 0 60px hsl(var(--primary))' }
+				},
+				'win-celebration': {
+					'0%': { transform: 'scale(1)', boxShadow: '0 0 20px hsl(120 100% 50%)' },
+					'50%': { transform: 'scale(1.1)', boxShadow: '0 0 40px hsl(120 100% 50%), 0 0 60px hsl(120 100% 50%)' },
+					'100%': { transform: 'scale(1)', boxShadow: '0 0 20px hsl(120 100% 50%)' }
+				},
+				'lose-shake': {
+					'0%, 100%': { transform: 'translateX(0)' },
+					'25%': { transform: 'translateX(-5px)' },
+					'75%': { transform: 'translateX(5px)' }
+				},
+				'float': {
+					'0%, 100%': { transform: 'translateY(0px)' },
+					'50%': { transform: 'translateY(-10px)' }
 				}
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
-				'accordion-up': 'accordion-up 0.2s ease-out'
+				'accordion-up': 'accordion-up 0.2s ease-out',
+				'neon-pulse': 'neon-pulse 2s ease-in-out infinite',
+				'win-celebration': 'win-celebration 0.6s ease-in-out',
+				'lose-shake': 'lose-shake 0.5s ease-in-out',
+				'float': 'float 3s ease-in-out infinite'
+			},
+			boxShadow: {
+				'neon': '0 0 20px hsl(var(--primary))',
+				'neon-strong': '0 0 30px hsl(var(--primary)), 0 0 60px hsl(var(--primary))',
+				'game-red': '0 0 20px hsl(var(--game-red))',
+				'game-blue': '0 0 20px hsl(var(--game-blue))',
+				'game-yellow': '0 0 20px hsl(var(--game-yellow))'
 			}
 		}
 	},

@@ -2,41 +2,62 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
+/* Casino Color Trading Game Design System - Dark Neon Theme */
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Dark Casino Background */
+    --background: 240 10% 6%;
+    --foreground: 0 0% 98%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    /* Card System */
+    --card: 240 10% 8%;
+    --card-foreground: 0 0% 95%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover: 240 10% 8%;
+    --popover-foreground: 0 0% 95%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    /* Electric Gold Primary */
+    --primary: 45 100% 60%;
+    --primary-foreground: 240 10% 6%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    /* Dark Purple Secondary */
+    --secondary: 260 50% 15%;
+    --secondary-foreground: 0 0% 95%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    /* Subtle Dark Muted */
+    --muted: 240 10% 12%;
+    --muted-foreground: 240 5% 70%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    /* Electric Blue Accent */
+    --accent: 200 100% 50%;
+    --accent-foreground: 240 10% 6%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    /* Electric Red Destructive */
+    --destructive: 0 100% 60%;
+    --destructive-foreground: 0 0% 98%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    /* Borders */
+    --border: 240 10% 15%;
+    --input: 240 10% 12%;
+    --ring: 45 100% 60%;
 
-    --radius: 0.5rem;
+    --radius: 0.75rem;
+
+    /* Game Colors */
+    --game-red: 0 100% 60%;
+    --game-blue: 220 100% 60%;
+    --game-yellow: 45 100% 60%;
+    
+    /* Effects */
+    --neon-glow: 0 0 20px;
+    --win-glow: 120 100% 50%;
+    --lose-glow: 0 100% 50%;
+    
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(45 100% 60%), hsl(45 100% 70%));
+    --gradient-card: linear-gradient(145deg, hsl(240 10% 8%), hsl(240 10% 12%));
+    --gradient-game: linear-gradient(180deg, hsl(240 10% 6%), hsl(240 15% 8%));
 
     --sidebar-background: 0 0% 98%;
 
