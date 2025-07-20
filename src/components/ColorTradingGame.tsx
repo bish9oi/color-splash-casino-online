@@ -14,9 +14,6 @@ import {
   Zap
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { WalletComponent } from '@/components/WalletComponent';
-import { supabase } from '@/lib/supabase';
-import { useToast } from '@/hooks/use-toast';
 
 interface User {
   id: string;
@@ -43,7 +40,7 @@ const COLORS = [
 ];
 
 export function ColorTradingGame({ user, onLogout }: ColorTradingGameProps) {
-  const [walletBalance, setWalletBalance] = useState(0);
+  const [balance, setBalance] = useState(1000); // Default balance
   const [betAmount, setBetAmount] = useState(10);
   const [selectedColor, setSelectedColor] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -53,7 +50,6 @@ export function ColorTradingGame({ user, onLogout }: ColorTradingGameProps) {
   const [winStreak, setWinStreak] = useState(0);
   const [totalGames, setTotalGames] = useState(0);
   const [totalWins, setTotalWins] = useState(0);
-  const { toast } = useToast();
 
   const winRate = totalGames > 0 ? Math.round((totalWins / totalGames) * 100) : 0;
 
@@ -69,128 +65,41 @@ export function ColorTradingGame({ user, onLogout }: ColorTradingGameProps) {
     return () => clearInterval(interval);
   }, [countdown, isPlaying]);
 
-  const placeBet = async (color: string) => {
-    if (walletBalance < betAmount || isPlaying) {
-      if (walletBalance < betAmount) {
-        toast({
-          title: "Insufficient Balance",
-          description: "Please add funds to your wallet to place this bet. Minimum bet: 10 USDT",
-          variant: "destructive",
-        });
-      }
-      return;
-    }
+  const placeBet = (color: string) => {
+    if (balance < betAmount || isPlaying) return;
 
-    if (betAmount < 10) {
-      toast({
-        title: "Minimum Bet Required",
-        description: "Minimum bet amount is 10 USDT",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      // Record the bet transaction
-      const { error } = await supabase.from('transactions').insert({
-        type: 'bet',
-        amount: betAmount,
-        description: `Bet ${betAmount} USDT on ${color}`,
-        status: 'completed'
-      });
-
-      if (error) throw error;
-
-      // Update wallet balance
-      const { error: walletError } = await supabase
-        .from('wallets')
-        .update({ 
-          balance: walletBalance - betAmount,
-          updated_at: new Date().toISOString()
-        })
-        .eq('user_id', user.id);
-
-      if (walletError) throw walletError;
-
-      setSelectedColor(color);
-      setWalletBalance(prev => prev - betAmount);
-      setIsPlaying(true);
-      setCountdown(3);
-      setGameResult(null);
-    } catch (error) {
-      console.error('Error placing bet:', error);
-      toast({
-        title: "Bet Failed",
-        description: "Failed to place bet. Please try again.",
-        variant: "destructive",
-      });
-    }
+    setSelectedColor(color);
+    setBalance(prev => prev - betAmount);
+    setIsPlaying(true);
+    setCountdown(3);
+    setGameResult(null);
   };
 
-  const revealResult = async () => {
+  const revealResult = () => {
     const winningColor = COLORS[Math.floor(Math.random() * COLORS.length)].name;
     const isWin = selectedColor === winningColor;
     const winAmount = isWin ? betAmount * 2 : 0;
     
-    try {
-      if (isWin) {
-        // Record win transaction
-        const { error: winError } = await supabase.from('transactions').insert({
-          type: 'win',
-          amount: winAmount,
-          description: `Won ${winAmount} USDT on ${selectedColor}`,
-          status: 'completed'
-        });
-
-        if (winError) throw winError;
-
-        // Update wallet balance
-        const { error: walletError } = await supabase
-          .from('wallets')
-          .update({ 
-            balance: walletBalance + winAmount,
-            updated_at: new Date().toISOString()
-          })
-          .eq('user_id', user.id);
-
-        if (walletError) throw walletError;
-
-        setWalletBalance(prev => prev + winAmount);
-        setTotalWins(prev => prev + 1);
-        setWinStreak(prev => prev + 1);
-        toast({
-          title: "🎉 You Won!",
-          description: `Congratulations! You won ${winAmount} USDT!`,
-        });
-      } else {
-        setWinStreak(0);
-        toast({
-          title: "Better luck next time!",
-          description: `The winning color was ${COLORS.find(c => c.name === winningColor)?.label}`,
-          variant: "destructive",
-        });
-      }
-
-      const result: GameResult = {
-        userChoice: selectedColor!,
-        winningColor,
-        isWin,
-        timestamp: new Date()
-      };
-
-      setGameResult(result);
-      setGameHistory(prev => [result, ...prev.slice(0, 9)]);
-      setTotalGames(prev => prev + 1);
-      setIsPlaying(false);
-      setSelectedColor(null);
-    } catch (error) {
-      console.error('Error processing win:', error);
-      toast({
-        title: "Error",
-        description: "Failed to process game result",
-        variant: "destructive",
-      });
+    if (isWin) {
+      setBalance(prev => prev + winAmount);
+      setTotalWins(prev => prev + 1);
+      setWinStreak(prev => prev + 1);
+    } else {
+      setWinStreak(0);
     }
+
+    const result: GameResult = {
+      userChoice: selectedColor!,
+      winningColor,
+      isWin,
+      timestamp: new Date()
+    };
+
+    setGameResult(result);
+    setGameHistory(prev => [result, ...prev.slice(0, 9)]);
+    setTotalGames(prev => prev + 1);
+    setIsPlaying(false);
+    setSelectedColor(null);
   };
 
   const quickBetAmounts = [10, 25, 50, 100];
@@ -218,7 +127,7 @@ export function ColorTradingGame({ user, onLogout }: ColorTradingGameProps) {
           <Card className="bg-card/50 backdrop-blur-sm">
             <CardContent className="p-4 text-center">
               <Coins className="h-6 w-6 mx-auto mb-2 text-primary" />
-              <div className="text-2xl font-bold text-foreground">{walletBalance.toFixed(2)} USDT</div>
+              <div className="text-2xl font-bold text-foreground">{balance.toFixed(2)} USDT</div>
               <div className="text-sm text-muted-foreground">Balance</div>
             </CardContent>
           </Card>
@@ -262,14 +171,9 @@ export function ColorTradingGame({ user, onLogout }: ColorTradingGameProps) {
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm font-medium">Bet Amount: {betAmount} USDT</span>
-                  <span className="text-sm text-muted-foreground">Max: {walletBalance.toFixed(2)} USDT</span>
+                  <span className="text-sm text-muted-foreground">Max: {balance.toFixed(2)} USDT</span>
                 </div>
-                <Progress value={walletBalance > 0 ? (betAmount / walletBalance) * 100 : 0} className="h-2" />
-                {walletBalance < 10 && (
-                  <p className="text-sm text-red-500 mt-2">
-                    Insufficient balance. Please add funds to your wallet.
-                  </p>
-                )}
+                <Progress value={balance > 0 ? (betAmount / balance) * 100 : 0} className="h-2" />
               </div>
               
               <div className="grid grid-cols-4 gap-2">
@@ -279,7 +183,7 @@ export function ColorTradingGame({ user, onLogout }: ColorTradingGameProps) {
                     variant={betAmount === amount ? "default" : "outline"}
                     size="sm"
                     onClick={() => setBetAmount(amount)}
-                    disabled={amount > walletBalance || isPlaying}
+                    disabled={amount > balance || isPlaying}
                   >
                     {amount} USDT
                   </Button>
@@ -306,7 +210,7 @@ export function ColorTradingGame({ user, onLogout }: ColorTradingGameProps) {
               {gameResult && (
                 <CardDescription className="text-lg">
                   {gameResult.isWin 
-                    ? `The winning color was ${COLORS.find(c => c.name === gameResult.winningColor)?.label}! You won $${betAmount * 2}!`
+                    ? `The winning color was ${COLORS.find(c => c.name === gameResult.winningColor)?.label}! You won ${betAmount * 2} USDT!`
                     : `The winning color was ${COLORS.find(c => c.name === gameResult.winningColor)?.label}. Better luck next time!`
                   }
                 </CardDescription>
@@ -327,7 +231,7 @@ export function ColorTradingGame({ user, onLogout }: ColorTradingGameProps) {
                       gameResult && gameResult.winningColor !== color.name && gameResult.userChoice === color.name && "animate-lose-shake"
                     )}
                     onClick={() => placeBet(color.name)}
-                    disabled={walletBalance < betAmount || isPlaying}
+                    disabled={balance < betAmount || isPlaying}
                   >
                     {color.label}
                     <br />
@@ -360,11 +264,6 @@ export function ColorTradingGame({ user, onLogout }: ColorTradingGameProps) {
 
         {/* Game History & Stats */}
         <div className="space-y-6">
-          {/* Wallet Component */}
-          <WalletComponent 
-            user={user} 
-            onBalanceUpdate={setWalletBalance}
-          />
           <Card className="bg-card/80 backdrop-blur-sm border-border">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
